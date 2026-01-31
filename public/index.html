@@ -31,10 +31,11 @@
     .source-item:hover { transform: translateX(5px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .source-item.connected { border-left-color: #44ff44; }
     .source-item.not-connected { border-left-color: #ccc; opacity: 0.7; }
-    .source-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 15px; }
+    .source-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 15px; overflow: hidden; }
     .source-icon.telegram { background: #0088cc; }
     .source-icon.discord { background: #5865F2; }
-    .source-icon.twitter { background: #1DA1F2; }
+    .source-icon.twitter { background: #ffffff; border: 1px solid #e1e8ed; }
+    .source-icon img { width: 100%; height: 100%; object-fit: cover; }
     .source-info { flex: 1; }
     .source-name { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
     .source-target { font-size: 0.85rem; color: #666; }
@@ -57,6 +58,23 @@
     .refresh-indicator { position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 10px 20px; border-radius: 20px; font-size: 0.85rem; color: #666; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .refresh-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #44ff44; margin-right: 8px; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; border: 2px solid transparent; }
+    .tab:hover { background: rgba(255,255,255,0.3); }
+    .tab.active { background: white; color: #667eea; border-color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .api-routes { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .route-group { margin-bottom: 30px; }
+    .route-group-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; color: #667eea; }
+    .route-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea; }
+    .route-method { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; margin-right: 10px; color: white; }
+    .route-method.get { background: #28a745; }
+    .route-method.post { background: #007bff; }
+    .route-method.put { background: #ffc107; color: #333; }
+    .route-method.delete { background: #dc3545; }
+    .route-path { font-family: 'Courier New', monospace; font-weight: 600; color: #333; }
+    .route-desc { margin-top: 8px; color: #666; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -65,12 +83,86 @@
       <h1>🧂 Salt Index</h1>
       <p class="subtitle">Real-time Sentiment Analysis Dashboard</p>
     </header>
-    <div id="dashboard"><div class="loading">Loading dashboard...</div></div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+      <div class="tab" onclick="switchTab('api')">🔌 API Routes</div>
+    </div>
+    <div id="dashboard-tab" class="tab-content active">
+      <div id="dashboard"><div class="loading">Loading dashboard...</div></div>
+    </div>
+    <div id="api-tab" class="tab-content">
+      <div class="api-routes">
+        <h2 style="margin-bottom: 20px; color: #333;">Available API Endpoints</h2>
+
+        <div class="route-group">
+          <div class="route-group-title">System</div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/health</span>
+            <div class="route-desc">Health check endpoint - returns system status and version</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/dashboard</span>
+            <div class="route-desc">Get complete dashboard data including sentiment, sources, and recent batches</div>
+          </div>
+        </div>
+
+        <div class="route-group">
+          <div class="route-group-title">Trackers</div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/trackers</span>
+            <div class="route-desc">List all configured trackers</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/trackers/:id</span>
+            <div class="route-desc">Get detailed information about a specific tracker</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/trackers/:id/sentiment</span>
+            <div class="route-desc">Get sentiment aggregates for a tracker (supports time bucket filtering)</div>
+          </div>
+        </div>
+
+        <div class="route-group">
+          <div class="route-group-title">Sources</div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/sources</span>
+            <div class="route-desc">List all configured sources (Telegram, Discord, Twitter)</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/sources/:id</span>
+            <div class="route-desc">Get detailed information about a specific source</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/sources/:id/sentiment</span>
+            <div class="route-desc">Get sentiment aggregates for a specific source</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007bff;">
+          <strong>Base URL:</strong> <code>http://localhost:3000</code><br>
+          <strong>Response Format:</strong> JSON<br>
+          <strong>Example:</strong> <code>curl http://localhost:3000/api/health</code>
+        </div>
+      </div>
+    </div>
     <div class="refresh-indicator"><span class="refresh-dot"></span><span id="refresh-text">Live</span></div>
   </div>
   <script>
     let refreshInterval, lastUpdate = null;
-    const platformIcons = { telegram: '✈️', discord: '💬', twitter: '🐦' };
+    const platformIcons = {
+      telegram: '/images/telegram.svg',
+      discord: '/images/discord.jpg',
+      twitter: '/images/twitter.svg'
+    };
+    const platformIconFallback = { telegram: '✈️', discord: '💬', twitter: '🐦' };
     const platformNames = { telegram: 'Telegram', discord: 'Discord', twitter: 'Twitter / X' };
 
     async function fetchDashboard() {
@@ -123,17 +215,23 @@
     function renderSources(sources) {
       if (!sources || sources.length === 0) return '<div style="text-align: center; color: #999; padding: 20px;">No platforms available</div>';
       return sources.map(source => {
-        const icon = platformIcons[source.platform] || '📡';
+        const iconPath = platformIcons[source.platform];
+        const fallbackIcon = platformIconFallback[source.platform] || '📡';
         const platformName = platformNames[source.platform] || source.platform;
         const statusClass = source.connected ? 'connected' : 'not-connected';
         const statusText = source.connected ? 'Connected' : 'Not Connected';
         const displayName = source.target || platformName;
-        const tooltip = !source.connected && source.configured === false ? 
+        const tooltip = !source.connected && source.configured === false ?
           'Configure in config.toml to enable' : '';
+
+        // Use img tag with fallback to emoji if image doesn't load
+        const iconHtml = iconPath
+          ? `<img src="${iconPath}" alt="${platformName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="display:block;"><span style="display:none;">${fallbackIcon}</span>`
+          : fallbackIcon;
 
         return `<div class="source-item ${statusClass}">
           ${tooltip ? `<div class="tooltip">${tooltip}</div>` : ''}
-          <div class="source-icon ${source.platform}">${icon}</div>
+          <div class="source-icon ${source.platform}">${iconHtml}</div>
           <div class="source-info">
             <div class="source-name">${displayName}</div>
             <div class="source-target"><span class="status-badge ${statusClass}">${statusText}</span></div>
@@ -149,7 +247,7 @@
     function renderBatches(batches) {
       if (!batches || batches.length === 0) return '<div style="text-align: center; color: #999; padding: 20px;">No batches processed yet</div>';
       return batches.map(batch => {
-        const time = new Date(batch.processed_at).toLocaleTimeString();
+        const time = new Date(batch.processed_at).toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false }) + ' UTC';
         const statusClass = batch.success ? 'success' : 'failed';
         return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${batch.processing_time_ms}ms</div><div class="batch-status ${statusClass}"></div></div>`;
       }).join('');
@@ -175,6 +273,21 @@
       if (lastUpdate) {
         const seconds = Math.floor((new Date() - lastUpdate) / 1000);
         document.getElementById('refresh-text').textContent = seconds === 0 ? 'Just updated' : `Updated ${seconds}s ago`;
+      }
+    }
+
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+
+      // Show selected tab
+      if (tabName === 'dashboard') {
+        document.getElementById('dashboard-tab').classList.add('active');
+        document.querySelectorAll('.tab')[0].classList.add('active');
+      } else if (tabName === 'api') {
+        document.getElementById('api-tab').classList.add('active');
+        document.querySelectorAll('.tab')[1].classList.add('active');
       }
     }
 

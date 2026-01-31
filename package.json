@@ -1,0 +1,42 @@
+{
+  "name": "salt-index",
+  "version": "1.0.0",
+  "description": "24/7 sentiment and signal aggregation backend for social platforms",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "sentiment-analysis",
+    "social-media",
+    "telegram",
+    "discord",
+    "twitter",
+    "llm",
+    "aggregation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "axios": "^1.6.5",
+    "cors": "^2.8.6",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "express-rate-limit": "^7.1.5",
+    "node-telegram-bot-api": "^0.64.0",
+    "sqlite3": "^5.1.7",
+    "twitter-api-v2": "^1.15.2",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

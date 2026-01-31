@@ -1,238 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salt Index - Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            padding: 40px 0;
-            border-bottom: 2px solid #1e293b;
-            margin-bottom: 40px;
-        }
-
-        h1 {
-            font-size: 2.5em;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #94a3b8;
-            font-size: 1.1em;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-
-        .stat-card {
-            background: #1e293b;
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-        }
-
-        .stat-label {
-            color: #94a3b8;
-            font-size: 0.9em;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #f1f5f9;
-        }
-
-        .stat-value.healthy {
-            color: #10b981;
-        }
-
-        .stat-value.degraded {
-            color: #f59e0b;
-        }
-
-        .stat-value.failed {
-            color: #ef4444;
-        }
-
-        .section {
-            background: #1e293b;
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            color: #f1f5f9;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-indicator.healthy {
-            background: #10b981;
-            box-shadow: 0 0 8px #10b981;
-        }
-
-        .status-indicator.degraded {
-            background: #f59e0b;
-            box-shadow: 0 0 8px #f59e0b;
-        }
-
-        .status-indicator.failed {
-            background: #ef4444;
-            box-shadow: 0 0 8px #ef4444;
-        }
-
-        .info-text {
-            color: #94a3b8;
-            line-height: 1.6;
-        }
-
-        .api-link {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .api-link:hover {
-            text-decoration: underline;
-        }
-
-        code {
-            background: #0f172a;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            color: #a5b4fc;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 40px 0 20px;
-            color: #64748b;
-            border-top: 1px solid #1e293b;
-            margin-top: 40px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salt Index - Live Monitoring Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; padding: 20px; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    header { text-align: center; color: white; margin-bottom: 30px; }
+    h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; }
+    .subtitle { font-size: 1.1rem; opacity: 0.9; }
+    .health-bar { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .health-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+    .stat { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: #667eea; }
+    .stat-label { font-size: 0.85rem; color: #666; margin-top: 5px; }
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 968px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    .sentiment-card, .sources-card, .batches-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .batches-card { grid-column: 1 / -1; }
+    .card-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; color: #333; }
+    .sentiment-gauge { position: relative; height: 200px; display: flex; align-items: center; justify-content: center; margin: 20px 0; }
+    .gauge-bg { width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(from 180deg, #ff4444 0deg, #ffaa00 90deg, #44ff44 180deg); display: flex; align-items: center; justify-content: center; }
+    .gauge-inner { width: 140px; height: 140px; border-radius: 50%; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .sentiment-score { font-size: 3rem; font-weight: 700; line-height: 1; }
+    .sentiment-label { font-size: 0.9rem; color: #666; margin-top: 5px; }
+    .source-list { display: flex; flex-direction: column; gap: 12px; }
+    .source-item { display: flex; align-items: center; padding: 15px; border-radius: 8px; background: #f8f9fa; border-left: 4px solid #ddd; transition: all 0.2s; position: relative; cursor: help; }
+    .source-item:hover { transform: translateX(5px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .source-item.connected { border-left-color: #44ff44; }
+    .source-item.not-connected { border-left-color: #ccc; opacity: 0.7; }
+    .source-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 15px; }
+    .source-icon.telegram { background: #0088cc; }
+    .source-icon.discord { background: #5865F2; }
+    .source-icon.twitter { background: #1DA1F2; }
+    .source-info { flex: 1; }
+    .source-name { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+    .source-target { font-size: 0.85rem; color: #666; }
+    .source-stats { text-align: right; }
+    .messages-count { font-weight: 700; font-size: 1.1rem; color: #667eea; }
+    .last-message { font-size: 0.75rem; color: #999; margin-top: 2px; }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .status-badge.connected { background: #d4edda; color: #155724; }
+    .status-badge.not-connected { background: #e2e3e5; color: #6c757d; }
+    .tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; margin-bottom: 5px; }
+    .source-item:hover .tooltip { opacity: 1; }
+    .batch-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+    .batch-item { display: flex; align-items: center; padding: 12px; border-radius: 6px; background: #f8f9fa; font-size: 0.9rem; }
+    .batch-time { color: #666; margin-right: 15px; min-width: 100px; }
+    .batch-info { flex: 1; }
+    .batch-status { width: 8px; height: 8px; border-radius: 50%; margin-left: 10px; }
+    .batch-status.success { background: #44ff44; }
+    .batch-status.failed { background: #ff4444; }
+    .loading { text-align: center; padding: 40px; color: white; font-size: 1.2rem; }
+    .refresh-indicator { position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 10px 20px; border-radius: 20px; font-size: 0.85rem; color: #666; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .refresh-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #44ff44; margin-right: 8px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Salt Index</h1>
-            <p class="subtitle">24/7 Sentiment & Signal Aggregation Backend</p>
-        </header>
+  <div class="container">
+    <header>
+      <h1>🧂 Salt Index</h1>
+      <p class="subtitle">Real-time Sentiment Analysis Dashboard</p>
+    </header>
+    <div id="dashboard"><div class="loading">Loading dashboard...</div></div>
+    <div class="refresh-indicator"><span class="refresh-dot"></span><span id="refresh-text">Live</span></div>
+  </div>
+  <script>
+    let refreshInterval, lastUpdate = null;
+    const platformIcons = { telegram: '✈️', discord: '💬', twitter: '🐦' };
+    const platformNames = { telegram: 'Telegram', discord: 'Discord', twitter: 'Twitter / X' };
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">System Status</div>
-                <div class="stat-value healthy">
-                    <span class="status-indicator healthy"></span>
-                    Operational
-                </div>
-            </div>
+    async function fetchDashboard() {
+      try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        renderDashboard(data);
+        lastUpdate = new Date();
+        updateRefreshText();
+      } catch (error) {
+        console.error('Failed to fetch dashboard:', error);
+        document.getElementById('dashboard').innerHTML = '<div class="loading" style="color: #ff4444;">⚠️ Failed to load dashboard. Retrying...</div>';
+      }
+    }
 
-            <div class="stat-card">
-                <div class="stat-label">Active Trackers</div>
-                <div class="stat-value">0</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Active Sources</div>
-                <div class="stat-value">0</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Messages Processed</div>
-                <div class="stat-value">0</div>
-            </div>
+    function renderDashboard(data) {
+      const sentiment = data.sentiment || { score: 0, message_count: 0 };
+      const sentimentColor = getSentimentColor(sentiment.score);
+      const sentimentLabel = getSentimentLabel(sentiment.score);
+      document.getElementById('dashboard').innerHTML = `
+        <div class="health-bar">
+          <div class="health-stats">
+            <div class="stat"><div class="stat-value">${data.system.total_platforms}</div><div class="stat-label">Total Platforms</div></div>
+            <div class="stat"><div class="stat-value" style="color: #44ff44">${data.system.connected}</div><div class="stat-label">Connected</div></div>
+            <div class="stat"><div class="stat-value" style="color: #aaa">${data.system.not_connected}</div><div class="stat-label">Not Connected</div></div>
+            <div class="stat"><div class="stat-value">${data.system.messages_today}</div><div class="stat-label">Messages Today</div></div>
+          </div>
         </div>
-
-        <div class="section">
-            <h2 class="section-title">Welcome to Salt Index!</h2>
-            <p class="info-text">
-                Salt Index is now running. This is a minimal dashboard for monitoring and configuration.
-            </p>
-            <br>
-            <p class="info-text">
-                <strong>Next Steps:</strong>
-            </p>
-            <ul class="info-text" style="margin-left: 20px; margin-top: 10px;">
-                <li style="margin-bottom: 8px;">Configure your trackers in <code>config/config.toml</code></li>
-                <li style="margin-bottom: 8px;">Add platform sources (Telegram, Discord, Twitter)</li>
-                <li style="margin-bottom: 8px;">Access the API at <a href="/api/health" class="api-link">/api/health</a></li>
-                <li style="margin-bottom: 8px;">Check documentation in the <code>docs/</code> folder</li>
-            </ul>
+        <div class="dashboard-grid">
+          <div class="sentiment-card">
+            <div class="card-title">📊 Current Sentiment</div>
+            <div class="sentiment-gauge"><div class="gauge-bg"><div class="gauge-inner">
+              <div class="sentiment-score" style="color: ${sentimentColor}">${sentiment.score >= 0 ? '+' : ''}${sentiment.score}</div>
+              <div class="sentiment-label">${sentimentLabel}</div>
+            </div></div></div>
+            ${sentiment.message_count > 0 ? `<div style="text-align: center; color: #666; font-size: 0.9rem;">Based on ${sentiment.message_count} messages from ${sentiment.author_count} authors</div>` : '<div style="text-align: center; color: #999; font-size: 0.9rem;">No data yet - waiting for messages...</div>'}
+          </div>
+          <div class="sources-card">
+            <div class="card-title">🔌 Platform Sources</div>
+            <div class="source-list">${renderSources(data.sources)}</div>
+          </div>
         </div>
-
-        <div class="section">
-            <h2 class="section-title">API Endpoints</h2>
-            <p class="info-text" style="margin-bottom: 15px;">
-                Access the REST API using your API keys:
-            </p>
-            <ul class="info-text" style="margin-left: 20px;">
-                <li style="margin-bottom: 8px;"><a href="/api/health" class="api-link">GET /api/health</a> - System health check</li>
-                <li style="margin-bottom: 8px;"><a href="#" class="api-link">GET /api/trackers</a> - List all trackers</li>
-                <li style="margin-bottom: 8px;"><a href="#" class="api-link">GET /api/sources</a> - List all sources</li>
-            </ul>
-            <br>
-            <p class="info-text">
-                See <code>docs/API_SCHEMA.md</code> for complete API documentation with examples.
-            </p>
+        <div class="batches-card">
+          <div class="card-title">⚡ Recent Processing Activity</div>
+          <div class="batch-list">${renderBatches(data.recent_batches)}</div>
         </div>
+      `;
+    }
 
-        <div class="section">
-            <h2 class="section-title">Documentation</h2>
-            <p class="info-text">
-                Complete documentation is available in the <code>docs/</code> folder:
-            </p>
-            <ul class="info-text" style="margin-left: 20px; margin-top: 10px;">
-                <li style="margin-bottom: 8px;"><code>docs/ARCHITECTURE.md</code> - System architecture and design</li>
-                <li style="margin-bottom: 8px;"><code>docs/API_SCHEMA.md</code> - API endpoints and examples</li>
-                <li style="margin-bottom: 8px;"><code>docs/DATABASE_SCHEMA.md</code> - Database structure</li>
-                <li style="margin-bottom: 8px;"><code>docs/CONFIGURATION.md</code> - Configuration guide</li>
-            </ul>
-        </div>
+    function renderSources(sources) {
+      if (!sources || sources.length === 0) return '<div style="text-align: center; color: #999; padding: 20px;">No platforms available</div>';
+      return sources.map(source => {
+        const icon = platformIcons[source.platform] || '📡';
+        const platformName = platformNames[source.platform] || source.platform;
+        const statusClass = source.connected ? 'connected' : 'not-connected';
+        const statusText = source.connected ? 'Connected' : 'Not Connected';
+        const displayName = source.target || platformName;
+        const tooltip = !source.connected && source.configured === false ? 
+          'Configure in config.toml to enable' : '';
 
-        <footer class="footer">
-            <p>Salt Index v1.0.0 | Built with Node.js, Express, and SQLite</p>
-        </footer>
-    </div>
+        return `<div class="source-item ${statusClass}">
+          ${tooltip ? `<div class="tooltip">${tooltip}</div>` : ''}
+          <div class="source-icon ${source.platform}">${icon}</div>
+          <div class="source-info">
+            <div class="source-name">${displayName}</div>
+            <div class="source-target"><span class="status-badge ${statusClass}">${statusText}</span></div>
+          </div>
+          <div class="source-stats">
+            <div class="messages-count">${source.messages_today || 0}</div>
+            <div class="last-message">Today</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderBatches(batches) {
+      if (!batches || batches.length === 0) return '<div style="text-align: center; color: #999; padding: 20px;">No batches processed yet</div>';
+      return batches.map(batch => {
+        const time = new Date(batch.processed_at).toLocaleTimeString();
+        const statusClass = batch.success ? 'success' : 'failed';
+        return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${batch.processing_time_ms}ms</div><div class="batch-status ${statusClass}"></div></div>`;
+      }).join('');
+    }
+
+    function getSentimentColor(score) {
+      if (score >= 50) return '#44ff44';
+      if (score >= 20) return '#88ff44';
+      if (score >= -20) return '#ffaa00';
+      if (score >= -50) return '#ff8844';
+      return '#ff4444';
+    }
+
+    function getSentimentLabel(score) {
+      if (score >= 70) return 'Very Positive';
+      if (score >= 30) return 'Positive';
+      if (score >= -30) return 'Neutral';
+      if (score >= -70) return 'Negative';
+      return 'Very Negative';
+    }
+
+    function updateRefreshText() {
+      if (lastUpdate) {
+        const seconds = Math.floor((new Date() - lastUpdate) / 1000);
+        document.getElementById('refresh-text').textContent = seconds === 0 ? 'Just updated' : `Updated ${seconds}s ago`;
+      }
+    }
+
+    fetchDashboard();
+    refreshInterval = setInterval(fetchDashboard, 5000);
+    setInterval(updateRefreshText, 1000);
+  </script>
 </body>
 </html>

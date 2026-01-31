@@ -64,8 +64,10 @@ class ExpressApp {
     // API Routes
     const trackersRouter = require('./routes/trackers');
     const sourcesRouter = require('./routes/sources');
+    const dashboardRouter = require('./routes/dashboard');
     this.app.use('/api/trackers', trackersRouter);
     this.app.use('/api/sources', sourcesRouter);
+    this.app.use('/api/dashboard', dashboardRouter);
   }
 
   /**

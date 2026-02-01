@@ -224,4 +224,130 @@ router.get('/:trackerId/timeseries', async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/trackers/:trackerId/statistics
+ * Delete all statistics for a tracker (admin only)
+ */
+router.delete('/:trackerId/statistics', async (req, res) => {
+  // Admin only
+  if (!req.user || req.user.type !== 'admin') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Admin permissions required'
+    });
+  }
+
+  try {
+    const { trackerId } = req.params;
+
+    // Check if tracker exists
+    const tracker = await db.queryOne(
+      'SELECT id FROM trackers WHERE id = ?',
+      [trackerId]
+    );
+
+    if (!tracker) {
+      return res.status(404).json({ error: 'NotFound', message: 'Tracker not found' });
+    }
+
+    // Delete tracker aggregates
+    const trackerResult = await db.run(
+      'DELETE FROM tracker_aggregates WHERE tracker_id = ?',
+      [trackerId]
+    );
+
+    // Delete source aggregates for this tracker
+    const sourceResult = await db.run(
+      'DELETE FROM source_aggregates WHERE tracker_id = ?',
+      [trackerId]
+    );
+
+    // Delete user aggregates for this tracker
+    const userResult = await db.run(
+      'DELETE FROM user_aggregates WHERE tracker_id = ?',
+      [trackerId]
+    );
+
+    logger.info(`Deleted statistics for tracker ${trackerId}`);
+
+    res.json({
+      message: 'Statistics deleted successfully',
+      tracker_id: trackerId,
+      deleted: {
+        tracker_aggregates: trackerResult.changes,
+        source_aggregates: sourceResult.changes,
+        user_aggregates: userResult.changes
+      }
+    });
+
+  } catch (error) {
+    logger.error(`Error deleting tracker statistics: ${error.message}`);
+    res.status(500).json({ error: 'InternalServerError', message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/trackers/:trackerId/statistics/:bucket
+ * Delete statistics for a specific bucket (admin only)
+ */
+router.delete('/:trackerId/statistics/:bucket', async (req, res) => {
+  // Admin only
+  if (!req.user || req.user.type !== 'admin') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Admin permissions required'
+    });
+  }
+
+  try {
+    const { trackerId, bucket } = req.params;
+    const { from, to } = req.query;
+
+    // Validate bucket
+    const validBuckets = ['1min', '5min', '1hour', '1day', '7day'];
+    if (!validBuckets.includes(bucket)) {
+      return res.status(400).json({
+        error: 'BadRequest',
+        message: `Invalid bucket. Must be one of: ${validBuckets.join(', ')}`
+      });
+    }
+
+    let trackerQuery = 'DELETE FROM tracker_aggregates WHERE tracker_id = ? AND bucket = ?';
+    let sourceQuery = 'DELETE FROM source_aggregates WHERE tracker_id = ? AND bucket = ?';
+    const params = [trackerId, bucket];
+
+    // Add time range if provided
+    if (from) {
+      trackerQuery += ' AND bucket_start >= ?';
+      sourceQuery += ' AND bucket_start >= ?';
+      params.push(from);
+    }
+    if (to) {
+      trackerQuery += ' AND bucket_start <= ?';
+      sourceQuery += ' AND bucket_start <= ?';
+      params.push(to);
+    }
+
+    const trackerResult = await db.run(trackerQuery, params);
+    const sourceResult = await db.run(sourceQuery, params);
+
+    logger.info(`Deleted ${bucket} statistics for tracker ${trackerId}`);
+
+    res.json({
+      message: 'Statistics deleted successfully',
+      tracker_id: trackerId,
+      bucket: bucket,
+      time_range: { from: from || 'all', to: to || 'all' },
+      deleted: {
+        tracker_aggregates: trackerResult.changes,
+        source_aggregates: sourceResult.changes
+      }
+    });
+
+  } catch (error) {
+    logger.error(`Error deleting bucket statistics: ${error.message}`);
+    res.status(500).json({ error: 'InternalServerError', message: error.message });
+  }
+});
+
 module.exports = router;

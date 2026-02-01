@@ -15,6 +15,9 @@ class BatchProcessor {
     this.messageQueue = [];
     this.processing = false;
     this.processingInterval = null;
+    this.queuedAt = {}; // Track when messages were first queued per tracker
+    this.maxRetries = 3; // Maximum retry attempts for failed batches
+    this.retryDelay = 60000; // Wait 60 seconds before retrying (ms)
   }
 
   /**
@@ -46,6 +49,16 @@ class BatchProcessor {
    * Add messages to queue
    */
   queueMessages(messages) {
+    const now = Date.now();
+
+    // Track first queued time per tracker
+    for (const msg of messages) {
+      if (!this.queuedAt[msg.trackerId]) {
+        this.queuedAt[msg.trackerId] = now;
+        logger.debug(`Started batch timer for tracker ${msg.trackerId}`);
+      }
+    }
+
     this.messageQueue.push(...messages);
     logger.debug(`Queued ${messages.length} messages. Total in queue: ${this.messageQueue.length}`);
   }
@@ -65,19 +78,44 @@ class BatchProcessor {
     this.processing = true;
 
     try {
+      const now = Date.now();
+
       // Group messages by tracker
       const byTracker = this.groupByTracker(this.messageQueue);
 
       for (const [trackerId, messages] of Object.entries(byTracker)) {
-        // Process in batches
-        while (messages.length > 0) {
-          const batch = messages.splice(0, this.batchSize);
-          await this.processBatch(trackerId, batch);
+        const queuedTime = this.queuedAt[trackerId];
+        const timeWaiting = now - queuedTime;
+        const hasEnoughMessages = messages.length >= this.batchSize;
+        const hasTimedOut = timeWaiting >= this.batchTimeout;
+
+        // Process if we have enough messages OR timeout has passed
+        if (hasEnoughMessages || hasTimedOut) {
+          if (hasTimedOut && !hasEnoughMessages) {
+            logger.info(`Batch timeout reached for tracker ${trackerId} (${messages.length} messages, waited ${Math.round(timeWaiting / 1000)}s)`);
+          }
+
+          // Process in batches of batchSize
+          while (messages.length > 0) {
+            const batch = messages.splice(0, this.batchSize);
+            await this.processBatch(trackerId, batch);
+          }
+
+          // Reset timer for this tracker
+          delete this.queuedAt[trackerId];
         }
       }
 
-      // Clear processed messages
-      this.messageQueue = [];
+      // Remove processed messages from queue
+      const processedTrackerIds = Object.keys(byTracker).filter(
+        trackerId => !this.queuedAt[trackerId]
+      );
+
+      if (processedTrackerIds.length > 0) {
+        this.messageQueue = this.messageQueue.filter(
+          msg => !processedTrackerIds.includes(msg.trackerId)
+        );
+      }
 
     } catch (error) {
       logger.error(`Error processing batches: ${error.message}`);
@@ -108,6 +146,9 @@ class BatchProcessor {
   async processBatch(trackerId, messages) {
     try {
       logger.info(`Processing batch for tracker ${trackerId}: ${messages.length} messages`);
+      messages.forEach((msg, i) => {
+        logger.info(`[BATCH DEBUG ${i+1}] Platform: ${msg.platform}, AuthorID: ${msg.author.id}, Username: ${msg.author.username}`);
+      });
 
       // Get tracker config
       const tracker = await this.getTrackerConfig(trackerId);
@@ -224,6 +265,25 @@ class BatchProcessor {
         ]
       );
     }
+  }
+
+  /**
+   * Get queue statistics
+   */
+  getQueueStats() {
+    const byTracker = this.groupByTracker(this.messageQueue);
+    const trackerStats = {};
+
+    for (const [trackerId, messages] of Object.entries(byTracker)) {
+      trackerStats[trackerId] = messages.length;
+    }
+
+    return {
+      total_queued: this.messageQueue.length,
+      processing: this.processing,
+      by_tracker: trackerStats,
+      estimated_batches: Math.ceil(this.messageQueue.length / this.batchSize)
+    };
   }
 }
 

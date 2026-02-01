@@ -25,10 +25,17 @@ class ConfigGenerator {
    */
   updateEnvFile(adminKey, viewKeys) {
     const envPath = path.join(process.cwd(), '.env');
+    const examplePath = path.join(process.cwd(), '.env.example');
 
+    // Create .env from .env.example if it doesn't exist
     if (!fs.existsSync(envPath)) {
-      logger.error('.env file not found!');
-      return;
+      if (fs.existsSync(examplePath)) {
+        logger.info('.env not found, copying from .env.example');
+        fs.copyFileSync(examplePath, envPath);
+      } else {
+        logger.error('.env and .env.example not found! Cannot generate keys.');
+        return;
+      }
     }
 
     let envContent = fs.readFileSync(envPath, 'utf8');
@@ -174,14 +181,41 @@ name = "Example Tracker"
 description = "Example sentiment tracker - edit or remove this"
 enabled = true
 enabled_tags = [
-    "optimism", "fear", "excitement", "hype", "FUD",
-    "support", "spam", "bot"
+    # Tone & Style
+    "sarcasm", "irony", "satire", "joke", "serious",
+    # Core Emotions
+    "anger", "rage", "frustration", "disappointment", "sadness",
+    "fear", "anxiety", "hope", "optimism", "enthusiasm",
+    "excitement", "happiness",
+    # Social & Interpersonal
+    "support", "praise", "gratitude", "helpful", "compassion",
+    "respect", "hostility", "bullying", "harassment", "threat", "toxic",
+    # Conversation Function
+    "agreement", "disagreement", "question", "answer",
+    "clarification", "suggestion", "request", "warning",
+    # Credibility & Manipulation
+    "spam", "bot", "scam", "phishing", "misinformation",
+    "manipulation", "brigading",
+    # Narrative & Amplification
+    "hype", "FUD", "sensationalism", "rumor",
+    "speculation", "panic", "urgency",
+    # Promotion & Marketing
+    "promotion", "shilling", "advertising"
 ]
-excluded_from_sentiment = []
+# excluded_from_sentiment inherits from [default_settings] above
 time_buckets = ["1min", "5min", "1hour", "1day"]
 
 # ============================================================
 # SOURCES - Define platform connections here
+# ============================================================
+# ⚠️  IMPORTANT: Salt Index will NOT monitor anything until you
+# ⚠️  uncomment and configure at least one source below!
+# ⚠️
+# ⚠️  Instructions:
+# ⚠️  1. Uncomment one of the examples below (remove the # symbols)
+# ⚠️  2. Update the id, target, and config values
+# ⚠️  3. Make sure you have the required credentials in .env
+# ⚠️  4. Restart the service or call POST /api/admin/reload-config
 # ============================================================
 
 # Example Telegram source
@@ -194,7 +228,7 @@ time_buckets = ["1min", "5min", "1hour", "1day"]
 # paused = false
 #
 # [sources.config]
-# channel_id = -1001234567890
+# # Note: For Bot API, channel_id is optional
 # monitor_forwards = true
 
 # Example Discord source

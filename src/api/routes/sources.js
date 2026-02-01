@@ -136,4 +136,52 @@ router.get('/:sourceId/snapshot', async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/sources/:sourceId/statistics
+ * Delete all statistics for a source (admin only)
+ */
+router.delete('/:sourceId/statistics', async (req, res) => {
+  // Admin only
+  if (!req.user || req.user.type !== 'admin') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Admin permissions required'
+    });
+  }
+
+  try {
+    const { sourceId } = req.params;
+
+    // Check if source exists
+    const source = await db.queryOne(
+      'SELECT id FROM sources WHERE id = ?',
+      [sourceId]
+    );
+
+    if (!source) {
+      return res.status(404).json({ error: 'NotFound', message: 'Source not found' });
+    }
+
+    // Delete source aggregates
+    const result = await db.run(
+      'DELETE FROM source_aggregates WHERE source_id = ?',
+      [sourceId]
+    );
+
+    logger.info(`Deleted statistics for source ${sourceId}`);
+
+    res.json({
+      message: 'Source statistics deleted successfully',
+      source_id: sourceId,
+      deleted: {
+        source_aggregates: result.changes
+      }
+    });
+
+  } catch (error) {
+    logger.error(`Error deleting source statistics: ${error.message}`);
+    res.status(500).json({ error: 'InternalServerError', message: error.message });
+  }
+});
+
 module.exports = router;

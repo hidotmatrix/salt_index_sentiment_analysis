@@ -13,6 +13,15 @@ const logger = require('../../utils/logger');
  */
 router.get('/', async (req, res) => {
   try {
+    // Get queue stats if batch processor is available
+    const expressApp = require('../app');
+    const batchProcessor = expressApp.getBatchProcessor();
+    let queueStats = null;
+
+    if (batchProcessor) {
+      queueStats = batchProcessor.getQueueStats();
+    }
+
     // Get all sources with their status
     const sources = await db.query(
       `SELECT id, platform, target, health_status, last_message_at,
@@ -22,13 +31,14 @@ router.get('/', async (req, res) => {
     );
 
     // Get message count for today per source
+    // Use 1day bucket to get accurate daily totals without duplication
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const messageCounts = await db.query(
       `SELECT source_id, SUM(message_count) as count
        FROM source_aggregates
-       WHERE bucket_start >= ?
+       WHERE bucket_start >= ? AND bucket = '1day'
        GROUP BY source_id`,
       [today.toISOString()]
     );
@@ -103,6 +113,7 @@ router.get('/', async (req, res) => {
         not_connected: allPlatforms.length - connectedSources,
         messages_today: totalMessagesToday
       },
+      queue: queueStats,
       sentiment: latestSentiment ? {
         score: latestSentiment.sentiment_score,
         message_count: latestSentiment.message_count,

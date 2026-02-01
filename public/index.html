@@ -75,6 +75,31 @@
     .route-method.delete { background: #dc3545; }
     .route-path { font-family: 'Courier New', monospace; font-weight: 600; color: #333; }
     .route-desc { margin-top: 8px; color: #666; font-size: 0.9rem; }
+    .auth-banner { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .auth-input-group { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+    .auth-input { flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.9rem; font-family: 'Courier New', monospace; }
+    .auth-input:focus { outline: none; border-color: #667eea; }
+    .auth-button { padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+    .auth-button:hover { background: #5568d3; }
+    .auth-button.logout { background: #dc3545; }
+    .auth-button.logout:hover { background: #c82333; }
+    .auth-status { padding: 12px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+    .auth-status.admin { background: #d4edda; color: #155724; }
+    .auth-status.view { background: #d1ecf1; color: #0c5460; }
+    .delete-btn { padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; }
+    .delete-btn:hover { background: #c82333; transform: scale(1.05); }
+    .delete-btn:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .modal-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 15px; color: #dc3545; }
+    .modal-body { margin-bottom: 20px; color: #333; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .modal-btn.cancel { background: #e0e0e0; color: #333; }
+    .modal-btn.cancel:hover { background: #d0d0d0; }
+    .modal-btn.confirm { background: #dc3545; color: white; }
+    .modal-btn.confirm:hover { background: #c82333; }
   </style>
 </head>
 <body>
@@ -83,6 +108,23 @@
       <h1>🧂 Salt Index</h1>
       <p class="subtitle">Real-time Sentiment Analysis Dashboard</p>
     </header>
+
+    <div class="auth-banner" id="auth-banner">
+      <div id="auth-input-section">
+        <div class="auth-input-group">
+          <input type="password" id="api-key-input" class="auth-input" placeholder="Enter API Key (Admin or View)">
+          <button class="auth-button" onclick="authenticate()">Authenticate</button>
+        </div>
+        <p style="color: #666; font-size: 0.85rem; margin: 0;">Enter your API key to access the dashboard. Admin keys enable delete controls.</p>
+      </div>
+      <div id="auth-status-section" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="auth-status" id="auth-status"></div>
+          <button class="auth-button logout" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+
     <div class="tabs">
       <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
       <div class="tab" onclick="switchTab('api')">🔌 API Routes</div>
@@ -122,8 +164,23 @@
           </div>
           <div class="route-item">
             <span class="route-method get">GET</span>
-            <span class="route-path">/api/trackers/:id/sentiment</span>
-            <div class="route-desc">Get sentiment aggregates for a tracker (supports time bucket filtering)</div>
+            <span class="route-path">/api/trackers/:id/snapshot</span>
+            <div class="route-desc">Get current snapshot for tracker (latest sentiment data)</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/trackers/:id/timeseries</span>
+            <div class="route-desc">Get time-series data for tracker (requires bucket and from params)</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method delete">DELETE</span>
+            <span class="route-path">/api/trackers/:id/statistics</span>
+            <div class="route-desc">🔒 Delete all statistics for tracker (admin only)</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method delete">DELETE</span>
+            <span class="route-path">/api/trackers/:id/statistics/:bucket</span>
+            <div class="route-desc">🔒 Delete statistics for specific time bucket (admin only)</div>
           </div>
         </div>
 
@@ -141,22 +198,96 @@
           </div>
           <div class="route-item">
             <span class="route-method get">GET</span>
-            <span class="route-path">/api/sources/:id/sentiment</span>
-            <div class="route-desc">Get sentiment aggregates for a specific source</div>
+            <span class="route-path">/api/sources/:id/snapshot</span>
+            <div class="route-desc">Get current snapshot for source (latest sentiment data)</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method delete">DELETE</span>
+            <span class="route-path">/api/sources/:id/statistics</span>
+            <div class="route-desc">🔒 Delete all statistics for source (admin only)</div>
           </div>
         </div>
 
-        <div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007bff;">
+        <div class="route-group">
+          <div class="route-group-title">Users</div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/users</span>
+            <div class="route-desc">List users with filtering by platform, tracker, messages, sentiment, or tags</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/users/:id</span>
+            <div class="route-desc">Get detailed information about a specific user</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/users/:id/sentiment-history</span>
+            <div class="route-desc">Get sentiment history for a user across trackers</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/users/top/active</span>
+            <div class="route-desc">Get most active users (by message count)</div>
+          </div>
+        </div>
+
+        <div class="route-group">
+          <div class="route-group-title">Admin 🔒</div>
+          <div class="route-item">
+            <span class="route-method get">GET</span>
+            <span class="route-path">/api/admin/stats</span>
+            <div class="route-desc">Get system statistics (database size, memory, queue depth)</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method post">POST</span>
+            <span class="route-path">/api/admin/reload-config</span>
+            <div class="route-desc">Reload configuration from config.toml without restart</div>
+          </div>
+          <div class="route-item">
+            <span class="route-method post">POST</span>
+            <span class="route-path">/api/admin/cleanup</span>
+            <div class="route-desc">Run cleanup tasks (debug_traces, old_batches, or all)</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+          <strong>🔒 Authentication Required:</strong><br>
+          Most endpoints require API authentication. Include your API key in requests:<br>
+          <code style="display: block; margin-top: 8px; padding: 8px; background: white; border-radius: 4px;">
+            curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:3000/api/trackers
+          </code>
+          <div style="margin-top: 10px; font-size: 0.9rem;">
+            Admin endpoints (🔒) require the admin API key from .env file<br>
+            View-only keys can only access GET endpoints
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; padding: 20px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007bff;">
           <strong>Base URL:</strong> <code>http://localhost:3000</code><br>
           <strong>Response Format:</strong> JSON<br>
-          <strong>Example:</strong> <code>curl http://localhost:3000/api/health</code>
+          <strong>Public Endpoints:</strong> /api/health (no auth required)
         </div>
       </div>
     </div>
     <div class="refresh-indicator"><span class="refresh-dot"></span><span id="refresh-text">Live</span></div>
   </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">⚠️ Confirm Deletion</div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-btn confirm" id="modal-confirm-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let refreshInterval, lastUpdate = null;
+    let userPermission = null; // 'admin' or 'view'
     const platformIcons = {
       telegram: '/images/telegram.svg',
       discord: '/images/discord.jpg',
@@ -165,9 +296,92 @@
     const platformIconFallback = { telegram: '✈️', discord: '💬', twitter: '🐦' };
     const platformNames = { telegram: 'Telegram', discord: 'Discord', twitter: 'Twitter / X' };
 
+    // Authentication functions
+    async function authenticate() {
+      const apiKey = document.getElementById('api-key-input').value.trim();
+      if (!apiKey) {
+        alert('Please enter an API key');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/dashboard', {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+
+        if (response.status === 401) {
+          alert('Invalid API key');
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Store API key and detect permission level
+        sessionStorage.setItem('apiKey', apiKey);
+
+        // Test admin endpoint to determine permission level
+        const adminTest = await fetch('/api/admin/stats', {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+
+        userPermission = adminTest.ok ? 'admin' : 'view';
+
+        // Update UI
+        document.getElementById('auth-input-section').style.display = 'none';
+        document.getElementById('auth-status-section').style.display = 'block';
+        const statusEl = document.getElementById('auth-status');
+        statusEl.className = `auth-status ${userPermission}`;
+        statusEl.innerHTML = userPermission === 'admin'
+          ? '🔑 Admin Access - Full Controls'
+          : '👁️ View Access - Read Only';
+
+        // Start dashboard refresh
+        fetchDashboard();
+        startRefresh();
+      } catch (error) {
+        console.error('Auth error:', error);
+        alert('Failed to authenticate. Please check your API key.');
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('apiKey');
+      userPermission = null;
+      document.getElementById('auth-input-section').style.display = 'block';
+      document.getElementById('auth-status-section').style.display = 'none';
+      document.getElementById('api-key-input').value = '';
+      document.getElementById('dashboard').innerHTML = '<div class="loading">Enter API key to view dashboard</div>';
+      stopRefresh();
+    }
+
+    function getAuthHeaders() {
+      const apiKey = sessionStorage.getItem('apiKey');
+      return apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
+    }
+
+    // Check for existing session on load
+    window.addEventListener('DOMContentLoaded', () => {
+      const apiKey = sessionStorage.getItem('apiKey');
+      if (apiKey) {
+        document.getElementById('api-key-input').value = apiKey;
+        authenticate();
+      }
+    });
+
     async function fetchDashboard() {
       try {
-        const response = await fetch('/api/dashboard');
+        const response = await fetch('/api/dashboard', {
+          headers: getAuthHeaders()
+        });
+
+        if (response.status === 401) {
+          logout();
+          alert('Session expired. Please login again.');
+          return;
+        }
+
         const data = await response.json();
         renderDashboard(data);
         lastUpdate = new Date();
@@ -182,6 +396,10 @@
       const sentiment = data.sentiment || { score: 0, message_count: 0 };
       const sentimentColor = getSentimentColor(sentiment.score);
       const sentimentLabel = getSentimentLabel(sentiment.score);
+      const queue = data.queue || { total_queued: 0, processing: false, estimated_batches: 0 };
+      const queueColor = queue.processing ? '#ffaa00' : (queue.total_queued > 0 ? '#667eea' : '#44ff44');
+      const queueStatus = queue.processing ? '⚙️' : (queue.total_queued > 0 ? '⏳' : '✓');
+
       document.getElementById('dashboard').innerHTML = `
         <div class="health-bar">
           <div class="health-stats">
@@ -189,6 +407,7 @@
             <div class="stat"><div class="stat-value" style="color: #44ff44">${data.system.connected}</div><div class="stat-label">Connected</div></div>
             <div class="stat"><div class="stat-value" style="color: #aaa">${data.system.not_connected}</div><div class="stat-label">Not Connected</div></div>
             <div class="stat"><div class="stat-value">${data.system.messages_today}</div><div class="stat-label">Messages Today</div></div>
+            <div class="stat"><div class="stat-value" style="color: ${queueColor}">${queueStatus} ${queue.total_queued}</div><div class="stat-label">Queue Depth</div></div>
           </div>
         </div>
         <div class="dashboard-grid">
@@ -198,7 +417,14 @@
               <div class="sentiment-score" style="color: ${sentimentColor}">${sentiment.score >= 0 ? '+' : ''}${sentiment.score}</div>
               <div class="sentiment-label">${sentimentLabel}</div>
             </div></div></div>
-            ${sentiment.message_count > 0 ? `<div style="text-align: center; color: #666; font-size: 0.9rem;">Based on ${sentiment.message_count} messages from ${sentiment.author_count} authors</div>` : '<div style="text-align: center; color: #999; font-size: 0.9rem;">No data yet - waiting for messages...</div>'}
+            ${sentiment.message_count > 0 ? `
+              <div style="text-align: center; color: #666; font-size: 0.9rem;">
+                Based on ${sentiment.message_count} messages from ${sentiment.author_count} authors
+              </div>
+              <div style="text-align: center; color: #999; font-size: 0.85rem; margin-top: 5px;">
+                Last updated: ${getRelativeTime(sentiment.timestamp)}
+              </div>
+            ` : '<div style="text-align: center; color: #999; font-size: 0.9rem;">No data yet - waiting for messages...</div>'}
           </div>
           <div class="sources-card">
             <div class="card-title">🔌 Platform Sources</div>
@@ -209,6 +435,30 @@
           <div class="card-title">⚡ Recent Processing Activity</div>
           <div class="batch-list">${renderBatches(data.recent_batches)}</div>
         </div>
+        ${queue && queue.total_queued > 0 ? `
+        <div class="batches-card" style="margin-top: 20px;">
+          <div class="card-title">📥 Queue Status</div>
+          <div style="padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+              <div><strong>Total Queued:</strong> ${queue.total_queued} messages</div>
+              <div><strong>Estimated Batches:</strong> ${queue.estimated_batches}</div>
+              <div><strong>Status:</strong> ${queue.processing ? '🔄 Processing...' : '⏸️ Waiting'}</div>
+            </div>
+            ${queue.by_tracker && Object.keys(queue.by_tracker).length > 0 ? `
+              <div style="margin-top: 15px;">
+                <strong>By Tracker:</strong>
+                <div style="margin-top: 8px; display: flex; gap: 15px; flex-wrap: wrap;">
+                  ${Object.entries(queue.by_tracker).map(([tracker, count]) =>
+                    `<span style="padding: 4px 12px; background: white; border-radius: 12px; font-size: 0.9rem;">
+                      ${tracker}: ${count}
+                    </span>`
+                  ).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        ` : ''}
       `;
     }
 
@@ -229,6 +479,10 @@
           ? `<img src="${iconPath}" alt="${platformName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="display:block;"><span style="display:none;">${fallbackIcon}</span>`
           : fallbackIcon;
 
+        const deleteBtn = userPermission === 'admin'
+          ? `<button class="delete-btn" onclick="confirmDeleteSource('${source.id}', '${displayName}')" title="Delete statistics for this source">🗑️ Delete Stats</button>`
+          : '';
+
         return `<div class="source-item ${statusClass}">
           ${tooltip ? `<div class="tooltip">${tooltip}</div>` : ''}
           <div class="source-icon ${source.platform}">${iconHtml}</div>
@@ -239,6 +493,7 @@
           <div class="source-stats">
             <div class="messages-count">${source.messages_today || 0}</div>
             <div class="last-message">Today</div>
+            ${deleteBtn}
           </div>
         </div>`;
       }).join('');
@@ -247,7 +502,7 @@
     function renderBatches(batches) {
       if (!batches || batches.length === 0) return '<div style="text-align: center; color: #999; padding: 20px;">No batches processed yet</div>';
       return batches.map(batch => {
-        const time = new Date(batch.processed_at).toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false }) + ' UTC';
+        const time = new Date(batch.processed_at).toLocaleTimeString('en-US', { hour12: false });
         const statusClass = batch.success ? 'success' : 'failed';
         return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${batch.processing_time_ms}ms</div><div class="batch-status ${statusClass}"></div></div>`;
       }).join('');
@@ -267,6 +522,25 @@
       if (score >= -30) return 'Neutral';
       if (score >= -70) return 'Negative';
       return 'Very Negative';
+    }
+
+    function getRelativeTime(timestamp) {
+      if (!timestamp) return '';
+      const now = new Date();
+      const then = new Date(timestamp);
+      const seconds = Math.floor((now - then) / 1000);
+
+      if (seconds < 10) return 'just now';
+      if (seconds < 60) return `${seconds}s ago`;
+
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
     }
 
     function updateRefreshText() {
@@ -291,8 +565,56 @@
       }
     }
 
-    fetchDashboard();
-    refreshInterval = setInterval(fetchDashboard, 5000);
+    // Delete confirmation and execution functions
+    function confirmDeleteSource(sourceId, sourceName) {
+      document.getElementById('modal-body').innerHTML = `
+        <p>Are you sure you want to delete all statistics for <strong>${sourceName}</strong>?</p>
+        <p style="color: #dc3545; margin-top: 10px;">⚠️ This action cannot be undone. All aggregated data for this source will be permanently deleted.</p>
+      `;
+      document.getElementById('modal-confirm-btn').onclick = () => deleteSourceStats(sourceId);
+      document.getElementById('delete-modal').classList.add('show');
+    }
+
+    async function deleteSourceStats(sourceId) {
+      try {
+        const response = await fetch(`/api/sources/${sourceId}/statistics`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const deletedCount = result.deleted?.source_aggregates || 0;
+        alert(`✅ Deleted ${deletedCount} statistics records for ${sourceId}`);
+        closeModal();
+        fetchDashboard(); // Refresh
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete statistics. Check console for details.');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('delete-modal').classList.remove('show');
+    }
+
+    function startRefresh() {
+      stopRefresh();
+      refreshInterval = setInterval(fetchDashboard, 5000);
+      setInterval(updateRefreshText, 1000);
+    }
+
+    function stopRefresh() {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    }
+
+    // Don't auto-start - wait for authentication
     setInterval(updateRefreshText, 1000);
   </script>
 </body>

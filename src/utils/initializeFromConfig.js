@@ -17,6 +17,10 @@ async function initializeFromConfig() {
       return;
     }
 
+    // Get default settings
+    const defaults = config.toml.default_settings || {};
+    const defaultExcludedFromSentiment = defaults.excluded_from_sentiment || ['spam', 'bot', 'scam', 'phishing'];
+
     // Insert trackers
     for (const tracker of config.toml.trackers) {
       await db.run(
@@ -30,7 +34,7 @@ async function initializeFromConfig() {
           tracker.description || '',
           tracker.enabled ? 1 : 0,
           JSON.stringify(tracker.enabled_tags),
-          JSON.stringify(tracker.excluded_from_sentiment || []),
+          JSON.stringify(tracker.excluded_from_sentiment || defaultExcludedFromSentiment),
           JSON.stringify(tracker.time_buckets)
         ]
       );

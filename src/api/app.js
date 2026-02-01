@@ -5,13 +5,24 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const logger = require('../utils/logger');
+const AuthMiddleware = require('./middleware/auth');
 
 class ExpressApp {
   constructor() {
     this.app = express();
+    this.auth = null;
+    this.batchProcessor = null;
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
+  }
+
+  /**
+   * Initialize with configuration
+   */
+  init(config) {
+    this.auth = new AuthMiddleware(config);
+    logger.info('Authentication middleware initialized');
   }
 
   /**
@@ -48,7 +59,7 @@ class ExpressApp {
       });
     });
 
-    // Root endpoint
+    // Root endpoint (public)
     this.app.get('/', (req, res) => {
       res.json({
         name: 'Salt Index API',
@@ -61,13 +72,60 @@ class ExpressApp {
       });
     });
 
-    // API Routes
+    // Apply auth middleware to all /api/* routes except /api/health
+    this.app.use('/api/*', (req, res, next) => {
+      // Skip auth for health check only
+      if (req.path === '/health' || req.baseUrl === '/api/health') {
+        return next();
+      }
+
+      // Apply auth middleware
+      if (!this.auth) {
+        return res.status(500).json({
+          error: 'ServerError',
+          message: 'Authentication not initialized'
+        });
+      }
+
+      // Call the auth middleware factory and execute it
+      const authMiddleware = this.auth.authenticate();
+      authMiddleware(req, res, next);
+    });
+
+    // All routes below require authentication
     const trackersRouter = require('./routes/trackers');
     const sourcesRouter = require('./routes/sources');
     const dashboardRouter = require('./routes/dashboard');
+    const usersRouter = require('./routes/users');
+    const adminRouter = require('./routes/admin');
+
     this.app.use('/api/trackers', trackersRouter);
     this.app.use('/api/sources', sourcesRouter);
     this.app.use('/api/dashboard', dashboardRouter);
+    this.app.use('/api/users', usersRouter);
+    this.app.use('/api/admin', adminRouter);
+  }
+
+  /**
+   * Get auth middleware instance
+   */
+  getAuth() {
+    return this.auth;
+  }
+
+  /**
+   * Set batch processor instance
+   */
+  setBatchProcessor(processor) {
+    this.batchProcessor = processor;
+    logger.info('Batch processor registered with Express app');
+  }
+
+  /**
+   * Get batch processor instance
+   */
+  getBatchProcessor() {
+    return this.batchProcessor;
   }
 
   /**

@@ -7,7 +7,26 @@ const db = require('../db');
 
 class AggregationEngine {
   constructor() {
-    this.timeBuckets = ['1min', '5min', '1hour', '1day', '7day'];
+    // Default time buckets (fallback only)
+    this.defaultTimeBuckets = ['1min', '5min', '1hour', '1day', '7day'];
+  }
+
+  /**
+   * Get time buckets for a tracker from database
+   */
+  async getTrackerTimeBuckets(trackerId) {
+    const tracker = await db.queryOne(
+      'SELECT time_buckets FROM trackers WHERE id = ?',
+      [trackerId]
+    );
+
+    if (tracker && tracker.time_buckets) {
+      const buckets = JSON.parse(tracker.time_buckets);
+      return buckets.length > 0 ? buckets : this.defaultTimeBuckets;
+    }
+
+    logger.warn(`No time_buckets config for tracker ${trackerId}, using defaults`);
+    return this.defaultTimeBuckets;
   }
 
   /**
@@ -17,16 +36,19 @@ class AggregationEngine {
     try {
       logger.info(`Creating aggregates for tracker ${trackerId}`);
 
+      // Get time buckets from tracker configuration
+      const timeBuckets = await this.getTrackerTimeBuckets(trackerId);
+
       // Group messages by source
       const bySource = this.groupBySource(messages);
 
       // Create source-level aggregates
       for (const [sourceId, sourceMessages] of Object.entries(bySource)) {
-        await this.createSourceAggregates(sourceId, trackerId, sourceMessages, llmResult);
+        await this.createSourceAggregates(sourceId, trackerId, sourceMessages, llmResult, timeBuckets);
       }
 
       // Create tracker-level aggregates
-      await this.createTrackerAggregates(trackerId, messages, llmResult);
+      await this.createTrackerAggregates(trackerId, messages, llmResult, timeBuckets);
 
       // Create user-level aggregates
       await this.createUserAggregates(trackerId, llmResult.perUser);
@@ -58,7 +80,7 @@ class AggregationEngine {
   /**
    * Create source-level aggregates
    */
-  async createSourceAggregates(sourceId, trackerId, messages, llmResult) {
+  async createSourceAggregates(sourceId, trackerId, messages, llmResult, timeBuckets) {
     const now = new Date();
 
     // Calculate per-source metrics (proportional to message count)
@@ -76,7 +98,7 @@ class AggregationEngine {
     }
 
     // Create aggregates for each time bucket
-    for (const bucket of this.timeBuckets) {
+    for (const bucket of timeBuckets) {
       const { bucketStart, bucketEnd } = this.getTimeBucket(now, bucket);
 
       await db.run(
@@ -112,7 +134,7 @@ class AggregationEngine {
   /**
    * Create tracker-level aggregates
    */
-  async createTrackerAggregates(trackerId, messages, llmResult) {
+  async createTrackerAggregates(trackerId, messages, llmResult, timeBuckets) {
     const now = new Date();
 
     // Get source weights
@@ -145,7 +167,7 @@ class AggregationEngine {
     }
 
     // Create aggregates for each time bucket
-    for (const bucket of this.timeBuckets) {
+    for (const bucket of timeBuckets) {
       const { bucketStart, bucketEnd } = this.getTimeBucket(now, bucket);
 
       await db.run(
@@ -201,9 +223,10 @@ class AggregationEngine {
       if (existing) {
         // Update existing
         const newTotalMessages = existing.total_messages + user.message_count;
-        const newAvgSentiment =
+        const newAvgSentiment = Math.round(
           ((existing.avg_sentiment * existing.total_messages) +
-           (user.sentiment_avg * user.message_count)) / newTotalMessages;
+           (user.sentiment_avg * user.message_count)) / newTotalMessages
+        );
 
         // Merge tag counts
         const existingTags = JSON.parse(existing.tag_counts);

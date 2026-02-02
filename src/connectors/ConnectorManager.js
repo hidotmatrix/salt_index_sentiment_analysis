@@ -4,6 +4,7 @@
  */
 const TelegramConnector = require('./TelegramConnector');
 const DiscordConnector = require('./DiscordConnector');
+const TwitterConnector = require('./TwitterConnector');
 const logger = require('../utils/logger');
 
 class ConnectorManager {
@@ -63,9 +64,8 @@ class ConnectorManager {
           break;
 
         case 'twitter':
-          // TODO: Implement Twitter connector
-          logger.warn(`Twitter connector not yet implemented for source: ${source.id}`);
-          return;
+          connector = new TwitterConnector(source, this.config.env);
+          break;
 
         default:
           logger.warn(`Unknown platform: ${source.platform} for source: ${source.id}`);

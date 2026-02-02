@@ -21,10 +21,10 @@ async function initializeFromConfig() {
     const defaults = config.toml.default_settings || {};
     const defaultExcludedFromSentiment = defaults.excluded_from_sentiment || ['spam', 'bot', 'scam', 'phishing'];
 
-    // Insert trackers
+    // Insert/update trackers (preserve existing data)
     for (const tracker of config.toml.trackers) {
-      await db.run(
-        `INSERT OR REPLACE INTO trackers (
+      const result = await db.run(
+        `INSERT OR IGNORE INTO trackers (
           id, name, description, enabled,
           enabled_tags, excluded_from_sentiment, time_buckets
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -38,14 +38,36 @@ async function initializeFromConfig() {
           JSON.stringify(tracker.time_buckets)
         ]
       );
-      logger.info(`Tracker inserted: ${tracker.id}`);
+
+      if (result.changes > 0) {
+        logger.info(`Tracker inserted: ${tracker.id}`);
+      } else {
+        // Tracker exists, update config
+        await db.run(
+          `UPDATE trackers SET
+            name = ?, description = ?, enabled = ?,
+            enabled_tags = ?, excluded_from_sentiment = ?, time_buckets = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?`,
+          [
+            tracker.name,
+            tracker.description || '',
+            tracker.enabled ? 1 : 0,
+            JSON.stringify(tracker.enabled_tags),
+            JSON.stringify(tracker.excluded_from_sentiment || defaultExcludedFromSentiment),
+            JSON.stringify(tracker.time_buckets),
+            tracker.id
+          ]
+        );
+        logger.info(`Tracker updated: ${tracker.id}`);
+      }
     }
 
-    // Insert sources
+    // Insert sources (use INSERT OR IGNORE to preserve cursors on restart)
     if (config.toml.sources) {
       for (const source of config.toml.sources) {
-        await db.run(
-          `INSERT OR REPLACE INTO sources (
+        // First try to insert (only if not exists)
+        const result = await db.run(
+          `INSERT OR IGNORE INTO sources (
             id, tracker_id, platform, target, config, weight, paused
           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
@@ -58,7 +80,27 @@ async function initializeFromConfig() {
             source.paused ? 1 : 0
           ]
         );
-        logger.info(`Source inserted: ${source.id}`);
+
+        if (result.changes > 0) {
+          logger.info(`Source inserted: ${source.id}`);
+        } else {
+          // Source exists, update config fields but preserve cursor-related data
+          await db.run(
+            `UPDATE sources SET
+              tracker_id = ?, platform = ?, target = ?, config = ?, weight = ?, paused = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?`,
+            [
+              source.tracker_id,
+              source.platform,
+              source.target,
+              JSON.stringify(source.config || {}),
+              source.weight || 1.0,
+              source.paused ? 1 : 0,
+              source.id
+            ]
+          );
+          logger.info(`Source updated (cursor preserved): ${source.id}`);
+        }
       }
     }
 

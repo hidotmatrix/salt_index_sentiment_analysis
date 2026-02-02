@@ -42,7 +42,6 @@ class DiscordConnector extends BaseConnector {
       // Login
       await this.client.login(botToken);
 
-      this.updateHealth('healthy');
       logger.info(`Discord source connected: ${this.source.id}`);
 
     } catch (error) {
@@ -70,6 +69,8 @@ class DiscordConnector extends BaseConnector {
         this.updateHealth('degraded', 'Channel not found or bot not in server');
       } else {
         logger.info(`Monitoring Discord channel: #${this.targetChannel.name}`);
+        // Set healthy AFTER monitoring is confirmed ready
+        this.updateHealth('healthy');
       }
     });
 

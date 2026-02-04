@@ -5,6 +5,7 @@
 const TelegramConnector = require('./TelegramConnector');
 const DiscordConnector = require('./DiscordConnector');
 const TwitterConnector = require('./TwitterConnector');
+const TelegramBotManager = require('./TelegramBotManager');
 const logger = require('../utils/logger');
 
 class ConnectorManager {
@@ -123,6 +124,9 @@ class ConnectorManager {
         logger.error(`Error disconnecting ${sourceId}: ${error.message}`);
       }
     }
+
+    // Shutdown shared Telegram bot manager
+    await TelegramBotManager.getInstance().shutdown();
 
     this.connectors.clear();
     logger.info('All connectors disconnected');

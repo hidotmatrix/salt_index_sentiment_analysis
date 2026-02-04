@@ -255,7 +255,7 @@
           <strong>🔒 Authentication Required:</strong><br>
           Most endpoints require API authentication. Include your API key in requests:<br>
           <code style="display: block; margin-top: 8px; padding: 8px; background: white; border-radius: 4px;">
-            curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:3000/api/trackers
+            curl -H "Authorization: Bearer YOUR_API_KEY" <span id="example-url"></span>/api/trackers
           </code>
           <div style="margin-top: 10px; font-size: 0.9rem;">
             Admin endpoints (🔒) require the admin API key from .env file<br>
@@ -264,7 +264,7 @@
         </div>
 
         <div style="margin-top: 20px; padding: 20px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007bff;">
-          <strong>Base URL:</strong> <code>http://localhost:3000</code><br>
+          <strong>Base URL:</strong> <code id="base-url"></code><br>
           <strong>Response Format:</strong> JSON<br>
           <strong>Public Endpoints:</strong> /api/health (no auth required)
         </div>
@@ -363,6 +363,11 @@
 
     // Check for existing session on load
     window.addEventListener('DOMContentLoaded', () => {
+      // Populate dynamic URLs
+      const baseUrl = window.location.origin;
+      document.getElementById('example-url').textContent = baseUrl;
+      document.getElementById('base-url').textContent = baseUrl;
+
       const apiKey = sessionStorage.getItem('apiKey');
       if (apiKey) {
         document.getElementById('api-key-input').value = apiKey;

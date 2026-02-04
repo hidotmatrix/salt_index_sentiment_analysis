@@ -173,9 +173,13 @@ router.post('/cleanup', async (req, res) => {
 
     const results = {};
 
+    // Get retention settings from TOML config
+    const config = configLoader.getConfig();
+    const retention = config.toml?.retention || {};
+
     if (target === 'debug_traces' || target === 'all') {
-      // Clean debug traces older than retention period
-      const retentionDays = parseInt(process.env.DEBUG_TRACE_RETENTION_DAYS) || 30;
+      // Clean debug traces older than retention period (from TOML with fallback)
+      const retentionDays = retention.debug_traces_days || 30;
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
@@ -191,9 +195,10 @@ router.post('/cleanup', async (req, res) => {
     }
 
     if (target === 'old_batches' || target === 'all') {
-      // Clean old batch logs (keep last 90 days)
+      // Clean old batch logs (from TOML with fallback)
+      const retentionDays = retention.llm_batch_logs_days || 90;
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 90);
+      cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
       const result = await db.run(
         'DELETE FROM llm_batch_log WHERE batch_timestamp < ?',
@@ -202,7 +207,7 @@ router.post('/cleanup', async (req, res) => {
 
       results.old_batches = {
         deleted: result.changes,
-        retention_days: 90
+        retention_days: retentionDays
       };
     }
 

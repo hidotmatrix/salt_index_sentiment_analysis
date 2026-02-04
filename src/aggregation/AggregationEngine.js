@@ -328,41 +328,47 @@ class AggregationEngine {
 
   /**
    * Get time bucket boundaries
+   * Supports dynamic bucket formats: Xmin, Xhour, Xday (e.g., "1min", "5min", "1hour", "8day")
    */
   getTimeBucket(timestamp, bucket) {
     const date = new Date(timestamp);
     let bucketStart, bucketEnd;
 
-    switch (bucket) {
-      case '1min':
-        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), 0);
-        bucketEnd = new Date(bucketStart.getTime() + 60000);
+    // Parse bucket format: number + unit (e.g., "5min", "1hour", "7day")
+    const match = bucket.match(/^(\d+)(min|hour|day)$/);
+    if (!match) {
+      throw new Error(`Invalid bucket format: ${bucket}. Expected format: Xmin, Xhour, or Xday`);
+    }
+
+    const num = parseInt(match[1]);
+    const unit = match[2];
+
+    switch (unit) {
+      case 'min':
+        // Round down to nearest bucket interval
+        const mins = Math.floor(date.getMinutes() / num) * num;
+        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), mins, 0);
+        bucketEnd = new Date(bucketStart.getTime() + num * 60000);
         break;
 
-      case '5min':
-        const mins5 = Math.floor(date.getMinutes() / 5) * 5;
-        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), mins5, 0);
-        bucketEnd = new Date(bucketStart.getTime() + 300000);
+      case 'hour':
+        const hours = Math.floor(date.getHours() / num) * num;
+        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, 0, 0);
+        bucketEnd = new Date(bucketStart.getTime() + num * 3600000);
         break;
 
-      case '1hour':
-        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), 0, 0);
-        bucketEnd = new Date(bucketStart.getTime() + 3600000);
-        break;
-
-      case '1day':
-        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
-        bucketEnd = new Date(bucketStart.getTime() + 86400000);
-        break;
-
-      case '7day':
-        const dayOfWeek = date.getDay();
-        bucketStart = new Date(date.getFullYear(), date.getMonth(), date.getDate() - dayOfWeek, 0, 0, 0);
-        bucketEnd = new Date(bucketStart.getTime() + 604800000);
+      case 'day':
+        // For multi-day buckets, align to start of week (Sunday) then offset
+        const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+        const bucketDayStart = Math.floor(dayOfYear / num) * num;
+        const yearStart = new Date(date.getFullYear(), 0, 1);
+        bucketStart = new Date(yearStart.getTime() + (bucketDayStart - 1) * 86400000);
+        bucketStart.setHours(0, 0, 0, 0);
+        bucketEnd = new Date(bucketStart.getTime() + num * 86400000);
         break;
 
       default:
-        throw new Error(`Unknown bucket type: ${bucket}`);
+        throw new Error(`Unknown bucket unit: ${unit}`);
     }
 
     return { bucketStart, bucketEnd };

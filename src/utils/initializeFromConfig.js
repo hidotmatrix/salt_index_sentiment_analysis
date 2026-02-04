@@ -64,6 +64,40 @@ async function initializeFromConfig() {
 
     // Insert sources (use INSERT OR IGNORE to preserve cursors on restart)
     if (config.toml.sources) {
+      // Get list of source IDs from config
+      const configSourceIds = config.toml.sources.map(s => s.id);
+
+      // Remove sources that are no longer in config (and their associated data)
+      const existingSources = await db.query('SELECT id FROM sources');
+      for (const existing of existingSources) {
+        if (!configSourceIds.includes(existing.id)) {
+          // Delete source aggregates
+          const aggResult = await db.run('DELETE FROM source_aggregates WHERE source_id = ?', [existing.id]);
+          // Delete from llm_batch_log where this source was involved
+          await db.run(
+            `DELETE FROM llm_batch_log WHERE source_ids LIKE ?`,
+            [`%"${existing.id}"%`]
+          );
+          // Delete cursor
+          await db.run('DELETE FROM cursors WHERE source_id = ?', [existing.id]);
+          // Delete the source itself
+          await db.run('DELETE FROM sources WHERE id = ?', [existing.id]);
+          logger.info(`Source removed (no longer in config): ${existing.id} (cleared ${aggResult.changes} aggregates)`);
+        }
+      }
+
+      // Clean up orphaned tracker aggregates (where all contributing sources are gone)
+      await db.run(`
+        DELETE FROM tracker_aggregates
+        WHERE tracker_id NOT IN (SELECT DISTINCT tracker_id FROM sources)
+      `);
+
+      // Clean up orphaned batch logs
+      await db.run(`
+        DELETE FROM llm_batch_log
+        WHERE tracker_id NOT IN (SELECT id FROM trackers)
+      `);
+
       for (const source of config.toml.sources) {
         // First try to insert (only if not exists)
         const result = await db.run(

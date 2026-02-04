@@ -263,6 +263,15 @@ retry_max_attempts = 5
 debug_traces_days = 30
 llm_batch_logs_days = 90
 aggregates_retention_days = 0  # 0 = infinite
+
+# Per-bucket retention (in days, 0 = infinite)
+# Shorter buckets have shorter retention to manage database size
+[retention.buckets]
+"1min" = 7      # Keep 1-minute data for 7 days
+"5min" = 30     # Keep 5-minute data for 30 days
+"1hour" = 90    # Keep 1-hour data for 90 days
+"1day" = 365    # Keep 1-day data for 1 year
+"7day" = 0      # Keep 7-day data forever
 `;
 
     fs.writeFileSync(configPath, configTemplate);

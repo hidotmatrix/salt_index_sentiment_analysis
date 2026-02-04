@@ -61,7 +61,10 @@ class CleanupManager {
    * Clean up old debug traces
    */
   async cleanupDebugTraces() {
-    const retentionDays = this.config.env.debug.traceRetentionDays;
+    // Read from TOML config with fallback to env
+    const retentionDays = this.config.toml?.retention?.debug_traces_days
+      || this.config.env.debug.traceRetentionDays
+      || 30;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
@@ -79,7 +82,8 @@ class CleanupManager {
    * Clean up old batch logs
    */
   async cleanupOldBatches() {
-    const retentionDays = 90; // Keep batch logs for 90 days
+    // Read from TOML config with fallback
+    const retentionDays = this.config.toml?.retention?.llm_batch_logs_days || 90;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
@@ -97,14 +101,17 @@ class CleanupManager {
    * Clean up old time bucket aggregates
    */
   async cleanupOldAggregates() {
-    // Define retention periods for each bucket (in days)
-    const retentionPeriods = {
-      '1min': 7,    // Keep 1-minute data for 7 days
-      '5min': 30,   // Keep 5-minute data for 30 days
-      '1hour': 90,  // Keep 1-hour data for 90 days
-      '1day': 365,  // Keep 1-day data for 1 year
-      '7day': 0     // Keep 7-day data forever (0 = no cleanup)
+    // Default retention periods (fallback if not in TOML)
+    const defaultRetention = {
+      '1min': 7,
+      '5min': 30,
+      '1hour': 90,
+      '1day': 365
     };
+
+    // Read from TOML config with fallback to defaults
+    const configuredRetention = this.config.toml?.retention?.buckets || {};
+    const retentionPeriods = { ...defaultRetention, ...configuredRetention };
 
     for (const [bucket, retentionDays] of Object.entries(retentionPeriods)) {
       if (retentionDays === 0) {

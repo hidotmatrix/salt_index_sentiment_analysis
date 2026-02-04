@@ -89,6 +89,10 @@
     .delete-btn { padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; }
     .delete-btn:hover { background: #c82333; transform: scale(1.05); }
     .delete-btn:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+    .bucket-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }
+    .bucket-btn { padding: 8px 16px; border: 2px solid #e0e0e0; background: white; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #666; transition: all 0.2s; }
+    .bucket-btn:hover { border-color: #667eea; color: #667eea; }
+    .bucket-btn.active { background: #667eea; color: white; border-color: #667eea; }
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
     .modal.show { display: flex; }
     .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
@@ -288,6 +292,19 @@
   <script>
     let refreshInterval, lastUpdate = null;
     let userPermission = null; // 'admin' or 'view'
+    let selectedBucket = null; // Will be set from tracker config
+    let availableBuckets = []; // Will be loaded from tracker config
+
+    // Convert bucket ID to display name (e.g., "1min" → "1 Min", "1hour" → "1 Hour")
+    function getBucketDisplayName(bucket) {
+      const match = bucket.match(/^(\d+)(min|hour|day)$/);
+      if (match) {
+        const num = match[1];
+        const unit = match[2].charAt(0).toUpperCase() + match[2].slice(1);
+        return `${num} ${unit}`;
+      }
+      return bucket;
+    }
     const platformIcons = {
       telegram: '/images/telegram.svg',
       discord: '/images/discord.jpg',
@@ -337,6 +354,9 @@
           ? '🔑 Admin Access - Full Controls'
           : '👁️ View Access - Read Only';
 
+        // Load tracker config to get available buckets
+        await loadTrackerConfig();
+
         // Start dashboard refresh
         fetchDashboard();
         startRefresh();
@@ -359,6 +379,24 @@
     function getAuthHeaders() {
       const apiKey = sessionStorage.getItem('apiKey');
       return apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
+    }
+
+    async function loadTrackerConfig() {
+      try {
+        const response = await fetch('/api/trackers', { headers: getAuthHeaders() });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.trackers && data.trackers.length > 0) {
+            const tracker = data.trackers[0];
+            if (tracker.time_buckets && tracker.time_buckets.length > 0) {
+              availableBuckets = tracker.time_buckets;
+              selectedBucket = availableBuckets[0]; // Default to first bucket
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Failed to load tracker config, using defaults');
+      }
     }
 
     // Check for existing session on load
@@ -388,6 +426,28 @@
         }
 
         const data = await response.json();
+
+        // Fetch sentiment for selected bucket from tracker snapshot
+        if (selectedBucket) {
+          try {
+            const snapshotRes = await fetch(`/api/trackers/example-tracker/snapshot?bucket=${selectedBucket}`, {
+              headers: getAuthHeaders()
+            });
+            if (snapshotRes.ok) {
+              const snapshot = await snapshotRes.json();
+              data.sentiment = {
+                score: snapshot.metrics?.sentiment?.score || 0,
+                message_count: snapshot.metrics?.volume?.message_count || 0,
+                author_count: snapshot.metrics?.volume?.author_count || 0,
+                timestamp: snapshot.window?.start,
+                tags: snapshot.metrics?.tags || {}
+              };
+            }
+          } catch (e) {
+            console.log('No data for bucket:', selectedBucket);
+          }
+        }
+
         renderDashboard(data);
         lastUpdate = new Date();
         updateRefreshText();
@@ -395,6 +455,11 @@
         console.error('Failed to fetch dashboard:', error);
         document.getElementById('dashboard').innerHTML = '<div class="loading" style="color: #ff4444;">⚠️ Failed to load dashboard. Retrying...</div>';
       }
+    }
+
+    function selectBucket(bucket) {
+      selectedBucket = bucket;
+      fetchDashboard();
     }
 
     function renderDashboard(data) {
@@ -418,8 +483,14 @@
         <div class="dashboard-grid">
           <div class="sentiment-card">
             <div class="card-title">📊 Current Sentiment</div>
+            ${availableBuckets.length > 0 ? `
+            <div class="bucket-selector">
+              ${availableBuckets.map(bucket =>
+                `<button class="bucket-btn ${selectedBucket === bucket ? 'active' : ''}" onclick="selectBucket('${bucket}')">${getBucketDisplayName(bucket)}</button>`
+              ).join('')}
+            </div>` : ''}
             <div class="sentiment-gauge"><div class="gauge-bg"><div class="gauge-inner">
-              <div class="sentiment-score" style="color: ${sentimentColor}">${sentiment.score >= 0 ? '+' : ''}${sentiment.score}</div>
+              <div class="sentiment-score" style="color: ${sentimentColor}">${sentiment.score >= 0 ? '+' : ''}${Math.round(sentiment.score)}</div>
               <div class="sentiment-label">${sentimentLabel}</div>
             </div></div></div>
             ${sentiment.message_count > 0 ? `

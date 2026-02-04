@@ -374,9 +374,8 @@ DATABASE_PATH=./data/salt_index.db
 BATCH_SIZE=30              # Number of messages to batch for LLM processing
 BATCH_TIMEOUT=60           # Maximum time (seconds) to wait before processing incomplete batch
 
-# Logging & Debugging
+# Logging
 LOG_LEVEL=info
-DEBUG_TRACE_RETENTION_DAYS=30
 ```
 
 See [`.env.example`](.env.example) for complete documentation with explanations for each variable.

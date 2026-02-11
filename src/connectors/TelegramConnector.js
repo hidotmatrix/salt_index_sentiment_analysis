@@ -136,6 +136,7 @@ class TelegramConnector extends BaseConnector {
 					chatId: msg.chat.id,
 					chatTitle: msg.chat.title,
 					messageId: msg.message_id,
+					topicId: msg.message_thread_id || null,
 					forwardFrom: msg.forward_from ? msg.forward_from.username : null,
 					senderType: msg.from ? 'user' : 'channel'
 				}

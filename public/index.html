@@ -578,7 +578,8 @@
     function renderBatches(batches) {
       if (!batches || batches.length === 0) return '<div style="text-align: center; color: #999; padding: 20px;">No batches processed yet</div>';
       return batches.map(batch => {
-        const time = new Date(batch.processed_at).toLocaleTimeString('en-US', { hour12: false });
+        const utcTimestamp = batch.processed_at.endsWith('Z') ? batch.processed_at : batch.processed_at + 'Z';
+        const time = new Date(utcTimestamp).toLocaleTimeString('en-US', { hour12: false });
         const statusClass = batch.success ? 'success' : 'failed';
         const timeStr = batch.processing_time_ms != null ? `${batch.processing_time_ms}ms` : 'N/A';
         return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${timeStr}</div><div class="batch-status ${statusClass}"></div></div>`;

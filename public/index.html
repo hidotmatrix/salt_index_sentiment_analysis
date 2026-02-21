@@ -580,7 +580,8 @@
       return batches.map(batch => {
         const time = new Date(batch.processed_at).toLocaleTimeString('en-US', { hour12: false });
         const statusClass = batch.success ? 'success' : 'failed';
-        return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${batch.processing_time_ms}ms</div><div class="batch-status ${statusClass}"></div></div>`;
+        const timeStr = batch.processing_time_ms != null ? `${batch.processing_time_ms}ms` : 'N/A';
+        return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${timeStr}</div><div class="batch-status ${statusClass}"></div></div>`;
       }).join('');
     }
 

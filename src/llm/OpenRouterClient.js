@@ -60,13 +60,11 @@ class OpenRouterClient {
         }
       );
 
-      const processingTime = Date.now() - startTime;
-
       // Parse response
       const result = this.parseResponse(response.data, messages, enabledTags);
 
-      // Add metadata
-      result.processingTime = processingTime;
+      // Add metadata (calculate after parsing so it includes parse time)
+      result.processingTime = Date.now() - startTime;
       result.tokensUsed = response.data.usage?.total_tokens || 0;
       result.model = this.model;
 

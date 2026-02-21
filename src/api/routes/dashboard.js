@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
     // Get recent batch logs (last 20 processed batches)
     const recentBatches = await db.query(
       `SELECT tracker_id, message_count, batch_timestamp,
-              processing_time_ms, success
+              processing_time_ms, success, error_message
        FROM llm_batch_log
        ORDER BY batch_timestamp DESC
        LIMIT 20`
@@ -127,7 +127,8 @@ router.get('/', async (req, res) => {
         message_count: batch.message_count,
         processed_at: batch.batch_timestamp,
         processing_time_ms: batch.processing_time_ms,
-        success: Boolean(batch.success)
+        success: Boolean(batch.success),
+        error_message: batch.error_message || null
       }))
     });
 

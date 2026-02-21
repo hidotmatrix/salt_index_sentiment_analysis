@@ -23,9 +23,12 @@ class OpenRouterClient {
   }
 
   /**
-   * Analyze a batch of messages
+   * Analyze a batch of messages with retry logic
    */
-  async analyzeBatch(messages, enabledTags, excludedFromSentiment) {
+  async analyzeBatch(messages, enabledTags, excludedFromSentiment, retryCount = 0) {
+    const maxRetries = 3;
+    const retryDelays = [2000, 5000, 10000]; // 2s, 5s, 10s
+
     try {
       const startTime = Date.now();
 
@@ -63,39 +66,42 @@ class OpenRouterClient {
       // Parse response
       const result = this.parseResponse(response.data, messages, enabledTags);
 
-      // Add metadata (calculate after parsing so it includes parse time)
+      // Add metadata
       result.processingTime = Date.now() - startTime;
       result.tokensUsed = response.data.usage?.total_tokens || 0;
       result.model = this.model;
 
-      logger.info(`LLM batch processed: ${messages.length} messages in ${processingTime}ms`);
+      logger.info(`LLM batch processed: ${messages.length} messages in ${result.processingTime}ms`);
 
       return result;
 
     } catch (error) {
-      // Handle axios errors with better messaging
-      let errorMsg = error.message || 'Unknown error';
+      // Determine if this is a retryable error
+      const isNetworkError = !error.response && error.request; // no response received
+      const isServerError = error.response && error.response.status >= 500; // 5xx
+      const isRateLimit = error.response && error.response.status === 429;
+      const isRetryable = isNetworkError || isServerError || isRateLimit;
 
+      // Format error message
+      let errorMsg = error.message || 'Unknown error';
       if (error.response) {
-        // HTTP error response from OpenRouter
         const status = error.response.status;
         const data = error.response.data;
         errorMsg = `HTTP ${status}: ${data.error?.message || JSON.stringify(data)}`;
-
-        logger.error(`OpenRouter API error: ${errorMsg}`);
-        logger.error(`Response status: ${status}`);
-        logger.error(`Response data: ${JSON.stringify(data)}`);
-      } else if (error.request) {
-        // Request made but no response
+      } else if (isNetworkError) {
         errorMsg = 'No response from OpenRouter API - network error';
-        logger.error(`OpenRouter API error: ${errorMsg}`);
-        logger.error('No response received from OpenRouter');
-      } else {
-        // Something else went wrong
-        logger.error(`OpenRouter API error: ${errorMsg}`);
       }
 
-      // Throw a new error with better message
+      // Retry if possible
+      if (isRetryable && retryCount < maxRetries) {
+        const delay = retryDelays[retryCount];
+        logger.warn(`OpenRouter API failed (attempt ${retryCount + 1}/${maxRetries + 1}): ${errorMsg}. Retrying in ${delay / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.analyzeBatch(messages, enabledTags, excludedFromSentiment, retryCount + 1);
+      }
+
+      // All retries exhausted or non-retryable error
+      logger.error(`OpenRouter API error (final): ${errorMsg}`);
       throw new Error(errorMsg);
     }
   }

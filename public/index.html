@@ -582,7 +582,12 @@
         const time = new Date(utcTimestamp).toLocaleTimeString('en-US', { hour12: false });
         const statusClass = batch.success ? 'success' : 'failed';
         const timeStr = batch.processing_time_ms != null ? `${batch.processing_time_ms}ms` : 'N/A';
-        return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${timeStr}</div><div class="batch-status ${statusClass}"></div></div>`;
+        if (batch.success) {
+          return `<div class="batch-item"><div class="batch-time">${time}</div><div class="batch-info">Processed ${batch.message_count} messages in ${timeStr}</div><div class="batch-status success"></div></div>`;
+        }
+        const reason = batch.error_message || 'Unknown error';
+        const shortReason = reason.length > 50 ? reason.substring(0, 50) + '...' : reason;
+        return `<div class="batch-item" title="${reason}" style="cursor: help;"><div class="batch-time">${time}</div><div class="batch-info" style="color: #e57373;">${batch.message_count} msgs failed <span style="color: #999; font-size: 0.85em;">· ${shortReason}</span></div><div class="batch-status failed"></div></div>`;
       }).join('');
     }
 

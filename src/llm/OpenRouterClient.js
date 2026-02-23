@@ -101,8 +101,9 @@ class OpenRouterClient {
       }
 
       // All retries exhausted or non-retryable error
-      logger.error(`OpenRouter API error (final): ${errorMsg}`);
-      throw new Error(errorMsg);
+      const finalMsg = retryCount > 0 ? `${errorMsg} (retried ${retryCount}x)` : errorMsg;
+      logger.error(`OpenRouter API error (final): ${finalMsg}`);
+      throw new Error(finalMsg);
     }
   }
 

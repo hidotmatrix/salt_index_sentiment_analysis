@@ -1,0 +1,225 @@
+# ============================================================
+# SALT INDEX - Configuration File
+# ============================================================
+# This file is auto-generated on first launch.
+# Edit carefully - changes take effect after service restart.
+#
+# Configuration changes continue from last-seen cursor
+# (no historical data is lost or re-processed).
+# ============================================================
+
+version = "1.0.0"
+
+# ============================================================
+# MASTER TAG LIST
+# ============================================================
+
+[tags.tone_and_style]
+enabled = true
+tags = ["sarcasm", "irony", "satire", "joke", "serious"]
+
+[tags.core_emotions]
+enabled = true
+tags = [
+    "anger", "rage", "frustration", "disappointment", "sadness",
+    "fear", "anxiety", "hope", "optimism", "enthusiasm",
+    "excitement", "happiness"
+]
+
+[tags.social_and_interpersonal]
+enabled = true
+tags = [
+    "support", "praise", "gratitude", "helpful", "compassion",
+    "respect", "hostility", "bullying", "harassment", "threat", "toxic"
+]
+
+[tags.conversation_function]
+enabled = true
+tags = [
+    "agreement", "disagreement", "question", "answer",
+    "clarification", "suggestion", "request", "warning"
+]
+
+[tags.credibility_and_manipulation]
+enabled = true
+tags = [
+    "spam", "bot", "scam", "phishing", "misinformation",
+    "manipulation", "brigading"
+]
+
+[tags.narrative_and_amplification]
+enabled = true
+tags = [
+    "hype", "FUD", "sensationalism", "rumor",
+    "speculation", "panic", "urgency"
+]
+
+[tags.promotion_and_marketing]
+enabled = true
+tags = ["promotion", "shilling", "advertising"]
+
+# ============================================================
+# DEFAULT SETTINGS
+# ============================================================
+
+[default_settings]
+enabled_tags = [
+    # Core emotions
+    "optimism", "fear", "excitement", "happiness", "sadness",
+    "anger", "disappointment",
+    # Narrative
+    "hype", "FUD", "speculation", "panic",
+    # Social
+    "support", "praise",
+    # Conversation
+    "agreement", "disagreement", "question",
+    # Credibility
+    "spam", "bot", "scam", "phishing", "misinformation"
+]
+
+excluded_from_sentiment = ["spam", "bot", "scam", "phishing"]
+
+# ============================================================
+# AGGREGATION SETTINGS
+# ============================================================
+
+[aggregation]
+time_buckets = ["1min", "5min", "1hour", "1day", "8day"]
+
+# ============================================================
+# LLM BATCHING
+# ============================================================
+
+[llm]
+batch_size = 30
+batch_timeout_seconds = 60
+max_context_messages = 5
+
+# ============================================================
+# TRACKERS - Define your monitoring targets here
+# ============================================================
+
+# Example tracker (you can add your own)
+[[trackers]]
+id = "example-tracker"
+name = "Example Tracker"
+description = "Example sentiment tracker - edit or remove this"
+enabled = true
+enabled_tags = [
+    # Tone & Style
+    "sarcasm", "irony", "satire", "joke", "serious",
+    # Core Emotions
+    "anger", "rage", "frustration", "disappointment", "sadness",
+    "fear", "anxiety", "hope", "optimism", "enthusiasm",
+    "excitement", "happiness",
+    # Social & Interpersonal
+    "support", "praise", "gratitude", "helpful", "compassion",
+    "respect", "hostility", "bullying", "harassment", "threat", "toxic",
+    # Conversation Function
+    "agreement", "disagreement", "question", "answer",
+    "clarification", "suggestion", "request", "warning",
+    # Credibility & Manipulation
+    "spam", "bot", "scam", "phishing", "misinformation",
+    "manipulation", "brigading",
+    # Narrative & Amplification
+    "hype", "FUD", "sensationalism", "rumor",
+    "speculation", "panic", "urgency",
+    # Promotion & Marketing
+    "promotion", "shilling", "advertising"
+]
+# excluded_from_sentiment inherits from [default_settings] above
+time_buckets = ["1min", "5min", "1hour", "1day", "8day"]
+
+# ============================================================
+# SOURCES - Define platform connections here
+# ============================================================
+
+# Telegram source - Anmol Network
+# [[sources]]
+# id = "telegram-anmol"
+# tracker_id = "example-tracker"
+# platform = "telegram"
+# target = "@anmolnetwork"
+# weight = 1.0
+# paused = false
+
+# Telegram source - Aquari (regular supergroup)
+# [[sources]]
+# id = "telegram-aquari"
+# tracker_id = "example-tracker"
+# platform = "telegram"
+# target = "@aquariofficial"
+# weight = 1.0
+# paused = false
+
+# [sources.config]
+# monitor_forwards = true
+
+# Telegram source - NervosTest General (forum group)
+[[sources]]
+id = "telegram-nervos"
+tracker_id = "example-tracker"
+platform = "telegram"
+target = "@NervosNation/1"
+weight = 1.0
+paused = false
+
+[sources.config]
+monitor_forwards = true
+
+# Discord source
+# [[sources]]
+# id = "discord-sushipushi"
+# tracker_id = "example-tracker"
+# platform = "discord"
+# target = "discord-sushipushi-channel"
+# weight = 1.0
+# paused = false
+
+# [sources.config]
+# server_id = "832721180246278234"
+# channel_id = "832721180246278237"
+
+# Twitter source
+[[sources]]
+id = "twitter-ckb"
+tracker_id = "example-tracker"
+platform = "twitter"
+target = "search:$CKB"
+weight = 1.0
+paused = false
+
+[sources.config]
+query = "$CKB"
+mode = "search"
+poll_interval = 60
+max_results = 10
+
+# ============================================================
+# OPERATIONAL SETTINGS
+# ============================================================
+
+[operations]
+health_check_interval = 60
+failure_threshold = 5
+retry_initial_delay_ms = 1000
+retry_max_delay_ms = 60000
+retry_max_attempts = 5
+
+# ============================================================
+# DATA RETENTION
+# ============================================================
+
+[retention]
+debug_traces_days = 30
+llm_batch_logs_days = 90
+aggregates_retention_days = 0  # 0 = infinite
+
+# Per-bucket retention (in days, 0 = infinite)
+# Shorter buckets have shorter retention to manage database size
+[retention.buckets]
+"1min" = 7      # Keep 1-minute data for 7 days
+"5min" = 30     # Keep 5-minute data for 30 days
+"1hour" = 90    # Keep 1-hour data for 90 days
+"1day" = 365    # Keep 1-day data for 1 year
+"8day" = 0      # Keep 8-day data forever

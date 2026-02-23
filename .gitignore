@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Environment variables
@@ -20,8 +19,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Config (keep template, ignore actual config)
-config/config.toml
+# Config
+# config/config.toml is committed intentionally (no secrets, needed for deployment)
 
 # OS
 .DS_Store
